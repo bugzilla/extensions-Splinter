@@ -18,19 +18,24 @@
   # Contributor(s): Owen Taylor <otaylor@redhat.com>
   #%]
 
+[% bodyclasses = [] %]
+[% FOREACH group = bug.groups_in %]
+  [% bodyclasses.push("bz_group_$group.name") %]
+[% END %]
+
 [% PROCESS global/header.html.tmpl
   title = "Patch Review"
   header = "Patch Review"
   style_urls = [ "js/yui/assets/skins/sam/container.css",
                  "js/yui/assets/skins/sam/button.css",
-	             "js/yui/assets/skins/sam/datatable.css",
-                 "extensions/Splinter/web/splinter.css" ]
+                 "js/yui/assets/skins/sam/datatable.css",
+                 "extensions/Splinter/web/splinter.css",
+                 "skins/custom/bug_groups.css" ]
   javascript_urls = [ "js/yui/element/element-min.js",
-                      "js/yui/connection/connection-min.js",
                       "js/yui/container/container-min.js",
                       "js/yui/button/button-min.js", 
                       "js/yui/json/json-min.js",
-		      "js/yui/datasource/datasource-min.js",
+                      "js/yui/datasource/datasource-min.js",
                       "js/yui/datatable/datatable-min.js",
                       "extensions/Splinter/web/splinter.js" ]
 %]
@@ -78,7 +83,7 @@
          [% IF attachment.id == attach_id && attachment.ispatch %]
            [% flag_types = attachment.flag_types %]
            [% can_edit = attachment.validate_can_edit %]
-           attachment.data = '[% attachment.data FILTER js %]';
+           attachment.data = '[% attach_data FILTER js %]';
            attachment.token = '[% issue_hash_token([attachment.id, attachment.modification_time]) FILTER js %]';
          [% END %]
          attachment.description = Splinter.Utils.strip('[% attachment.description FILTER js %]');
@@ -107,32 +112,33 @@
 </p>
 <![endif]-->
 
+<div id="helpful-links">
+  <a id="allReviewsLink" href="[% urlbase FILTER none %][% Param('splinter_base') FILTER js %]">
+    [reviews]</a>
+  <a id='helpLink' target='splinterHelp' 
+     href="[% urlbase FILTER none %]page.cgi?id=splinter/help.html">
+    [help]</a>
+</div>
+
 <div id="bugInfo" style="display: none;">
-  <b>Bug <span id="bugId"></span>:</b>
+  <b>Bug <a id="bugLink"><span id="bugId"></span></a>:</b>
   <span id="bugShortDesc"></span> -
   <span id="bugReporter"></span> -
   <span id="bugCreationDate"></span>
-  <span id="helpful-links">
-    <a id="originalBugLink">Back to Bug</a> |
-    <a id="allReviewsLink">Your Reviews</a> |
-    <a id='helpLink' target='splinterHelp' 
-       href="[% urlbase FILTER none %]page.cgi?id=splinter/help.html">
-    Help</a>
-  </span>
 </div>
 
 <div id="attachInfo" style="display:none;">
-  <b>Attachment <span id="attachId"></span>:</b>
+  <span id="attachObsolete"></span>
+  <b>Attachment <a id="attachLink"><span id="attachId"></span></a>:</b>
   <span id="attachDesc"></span> -
   <span id="attachCreator"></span> -
   <span id="attachDate"></span>
-  (<a href="[% urlbase FILTER none %]attachment.cgi?id=[% attach_id FILTER url_quote %]"
-      target="_blank">View</a>
-   [% IF feature_enabled('patch_viewer') %]
-     | <a href="attachment.cgi?id=[% attach_id FILTER url_quote %]&amp;action=diff"
-          target="_blank">Diff</a>
-   [% END %]
-  )
+  [% IF feature_enabled('patch_viewer') %]
+    <a href="[% urlbase FILTER none %]attachment.cgi?id=[% attach_id FILTER url_quote %]&amp;action=diff"
+       target="_blank">[diff]</a>
+  [% END %]
+  <a href="[% urlbase FILTER none %]attachment.cgi?id=[% attach_id FILTER url_quote %]&amp;action=edit"
+     target="_blank">[details]</a>
 </div>
 
 <div id="error" style="display: none;"> </div>
@@ -222,8 +228,14 @@
             Event.addListener('flag_type-[% flag_type.id FILTER js %]', 'change', 
                               function() { Splinter.flagChanged = 1;        
                                            Splinter.queueUpdateHaveDraft(); });
+            Event.addListener('requestee_type-[% flag_type.id FILTER js %]', 'change',
+                              function() { Splinter.flagChanges = 1;
+                                           Splinter.queueUpdateHaveDraft(); });
             [% FOREACH flag = flag_type.flags %]
               Event.addListener('flag-[% flag.id FILTER js %]', 'change', 
+                                function() { Splinter.flagChanged = 1;
+                                             Splinter.queueUpdateHaveDraft(); });
+              Event.addListener('requestee-[% flag.id FILTER js %]', 'change', 
                                 function() { Splinter.flagChanged = 1;
                                              Splinter.queueUpdateHaveDraft(); });
             [% END %]
@@ -247,7 +259,12 @@
   </div>
 </div>
 
-<div id="files" style="display: none;"></div>
+<div id="files" style="display: none;">
+  <div id="file-collapse-all" style="display:none;">
+    <a href="javascript:void(0);" onclick="Splinter.toggleCollapsed('', 'none')">Collapse All</a> |
+    <a href="javascript:void(0);" onclick="Splinter.toggleCollapsed('', 'block')">Expand All</a> 
+  </div>
+</div>
 
 <div id="credits">
   Powered by <a href="http://fishsoup.net/software/splinter">Splinter</a> 

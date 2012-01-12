@@ -58,7 +58,15 @@ sub page_before_template {
                 ThrowUserError('bug_attach_id_mismatch');
             }
 
+            # The patch is going to be displayed in a HTML page and if the utf8
+            # param is enabled, we have to encode attachment data as utf8.
+            if (Bugzilla->params->{'utf8'}) {
+                $attachment->data;  # load data
+                utf8::decode($attachment->{data});
+            }
+
             $vars->{'attach_id'} = $attachment->id;
+            $vars->{'attach_data'} = $attachment->data;
         }
 
         my $field_object = new Bugzilla::Field({ name => 'attachments.status' });
@@ -89,7 +97,7 @@ sub bug_format_comment {
     # the hook.
     $$text =~ s~((?:^Created\ |\b)attachment\s*\#?\s*(\d+)(\s\[details\])?)
                ~(push(@$regexes, { match => qr/__REVIEW__$2/,
-                                   replace => get_review_link($bug, "$2", "[review]") })) &&
+                                   replace => get_review_link("$2", "[review]") })) &&
                 (attachment_id_is_patch($2) ? "$1 __REVIEW__$2" : $1)
                ~egmx;
     

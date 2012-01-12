@@ -34,6 +34,11 @@ textarea:focus {
     margin-bottom: 1em;
 }
 
+#attachObsolete {
+    font-weight: bold;
+    color: #c00000;
+}
+
 .attachment-draft .attachment-id, .attachment-draft .attachment-desc {
     font-weight: bold;
 }
@@ -272,6 +277,7 @@ div.review-patch-comment-text {
     text-align: right;
     padding-right: 0.25em;
     color: #888888;
+    -moz-user-select: none;
 }
 
 .line-number-column {
@@ -393,4 +399,17 @@ div.review-patch-comment-text {
     border-radius: 10px;
     padding-left: 0.5em;
     margin-bottom: 10px;
+}
+
+.file-label-collapse {
+    padding-right: 5px;
+    font-family: monospace;
+}
+
+.file-review-label {
+    font-size: 80%;
+}
+
+.file-reviewed-nav {
+    text-decoration: line-through;
 }
