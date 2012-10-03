@@ -83,9 +83,9 @@ sub get_review_url {
     my $bug_id = $bug->id;
 
     if (defined $absolute && $absolute) {
-    	my $urlbase = correct_urlbase();
-	    $urlbase =~ s!/$!! if $base =~ "^/";
-	    $base = $urlbase . $base;
+        my $urlbase = correct_urlbase();
+        $urlbase =~ s!/$!! if $base =~ "^/";
+        $base = $urlbase . $base;
     }
 
     if ($base =~ /\?/) {
@@ -111,12 +111,12 @@ sub munge_create_attachment {
     my ($bug, $intro_text, $attach_id, $view_link) = @_;
 
     if (attachment_id_is_patch($attach_id)) {
-    	return ("$intro_text" .
+        return ("$intro_text" .
                 " View: $view_link\015\012" .
                 " Review: " . get_review_url($bug, $attach_id, 1) . "\015\012");
     } 
     else {
-	    return ("$intro_text --> ($view_link)");
+        return ("$intro_text --> ($view_link)");
     }
 }
 
@@ -126,34 +126,39 @@ sub munge_create_attachment {
 # (\015 and \012 are used because Perl \n is platform-dependent)
 sub add_review_links_to_email {
     my $email = shift;
-    my $body = $email->body;
-    my $new_body = 0;
-    my $bug;
 
-    if ($email->header('Subject') =~ /^\[Bug\s+(\d+)\]/ 
-        && Bugzilla->user->can_see_bug($1))
-    {
-	    $bug = Bugzilla::Bug->new($1);
-    }
+    my ($bug_id) = ($email->header('Subject') =~ /\[\D+(\d+)\]/);
+    return if !Bugzilla->user->can_see_bug($bug_id);
+    my $bug = Bugzilla::Bug->new($bug_id);
 
-    return unless defined $bug;
-
-    if ($body =~ /Review\s+of\s+attachment\s+\d+\s*:/) {
-	    $body =~ s~(Review\s+of\s+attachment\s+(\d+)\s*:)
-                  ~"$1\015\012 --> (" . get_review_url($bug, $2, 1) . ")"
-                  ~egx;
-	    $new_body = 1;
-    }
-
-    if ($body =~ /Created attachment \d+\015\012 --> /) {
-	    $body =~ s~(Created\ attachment\ (\d+)\015\012)
-                   \ -->\ \(([^\015\012]*)\)[^\015\012]*
-                  ~munge_create_attachment($bug, $1, $2, $3)
-                  ~egx;
-	    $new_body = 1;
-    }
-
-    $email->body_set($body) if $new_body;
+    $email->walk_parts(sub {
+        my $part = shift;
+        return if $part->parts > 1; # Top-level
+        my $content_type = $part->content_type;
+        return if !$content_type || $content_type !~ /text\/plain/;
+        my $body = $part->body;
+        my $new_body = 0;
+        if ($body =~ /Review\s+of\s+attachment\s+\d+\s*:/) {
+            $body =~ s~(Review\s+of\s+attachment\s+(\d+)\s*:)
+                      ~"$1\015\012 --> (" . get_review_url($bug, $2, 1) . ")"
+                      ~egx;
+            $new_body = 1;
+        }
+        if ($body =~ /Created attachment \d+\015\012 --> /) {
+            print STDERR "HERE I AM!";
+            $body =~ s~(Created\ attachment\ (\d+)\015\012)
+                       \ -->\ \(([^\015\012]*)\)[^\015\012]*
+                      ~munge_create_attachment($bug, $1, $2, $3)
+                      ~egx;
+            $new_body = 1;
+        }
+        $part->body_set($body) if $new_body;
+    });
 }
+
+#--- Comment #3 from David Lawrence [:dkl] <dkl@mozilla.com> 2012-09-14 14:27:42 EDT ---
+#Created attachment 601618
+#  --> http://centos/stable/attachment.cgi?id=601618&action=edit
+#test attachment
 
 1;
